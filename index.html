@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
+  <meta name="description" content="Pokédex NEO LAB · Filtra, compara y explora Pokémon con PokeAPI, GSAP y Anime.js. Tema claro/oscuro, infinite scroll y comparador.">
+  <meta name="theme-color" content="#E3350D">
+  <title>Pokédex NEO LAB · PokeAPI</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23E3350D'/%3E%3Ccircle cx='50' cy='50' r='32' fill='none' stroke='%231a1a1a' stroke-width='7'/%3E%3Ccircle cx='50' cy='50' r='14' fill='%23fff' stroke='%231a1a1a' stroke-width='5'/%3E%3Ccircle cx='50' cy='50' r='6' fill='%23e8e8e8' stroke='%23aaa' stroke-width='1.5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/pokedex.css">
+  <!-- GSAP + Plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/Flip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollToPlugin.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+</head>
+<body>
+  <!-- Topbar -->
+  <header class="topbar" role="banner">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-badge" aria-hidden="true"><span>◉</span></div>
+        <div>
+          <h1>POKEDEX <em>NEO LAB</em></h1>
+          <p><b>API:</b> pokeapi.co · <b>GSAP</b> + <b>Anime.js</b> · Paleta Pokédex oficial</p>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <div class="pill" role="search">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="text" placeholder="Filtra por nombre o #025" aria-label="Filtrar Pokémon por nombre o número" autocomplete="off" spellcheck="false">
+          <button id="searchBtn" type="button">Filtrar</button>
+        </div>
+
+        <select id="genSelect" class="select-dark" aria-label="Filtrar por generación">
+          <option value="1">Gen I · 1-151</option>
+          <option value="2">Gen II · 152-251</option>
+          <option value="3">Gen III · 252-386</option>
+          <option value="4">Gen IV · 387-493</option>
+          <option value="5">Gen V · 494-649</option>
+          <option value="6">Gen VI · 650-721</option>
+          <option value="7">Gen VII · 722-809</option>
+          <option value="8">Gen VIII · 810-898</option>
+          <option value="9">Gen IX · 899-1010</option>
+          <option value="all">Todas · 1-1025</option>
+        </select>
+
+        <button id="themeToggle" class="theme-toggle" aria-label="Cambiar tema claro/oscuro" title="Tema claro/oscuro">🌙</button>
+        <button id="favToggle" class="icon-mini" aria-label="Filtrar solo favoritos" aria-pressed="false" title="Solo favoritos">♥ <span id="favCountTop" style="font-size:.68rem;font-weight:800;margin-left:2px">0</span></button>
+        <a href="#favSection" id="goFavSection" class="icon-mini" aria-label="Ir a favoritos" title="Ver sección favoritos" style="text-decoration:none">⭐</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- View Tabs -->
+  <nav class="view-tabs" aria-label="Vistas">
+    <button id="tabExplorar" class="tab active" data-view="explorar" aria-selected="true">🔍 Explorar <span id="tabCountAll" class="tab-count"></span></button>
+    <button id="tabFavoritos" class="tab" data-view="favoritos" aria-selected="false">♥ Favoritos <span id="favCount" class="tab-count">0</span></button>
+  </nav>
+
+  <!-- Filters -->
+  <section class="filters" aria-label="Filtros">
+    <div class="filters-row">
+      <span class="filters-label">Filtrar por tipo</span>
+      <div id="typeFilters" class="type-grid" role="group" aria-label="Tipos">
+        <!-- JS genera chips -->
+      </div>
+      <div class="tools">
+        <label for="sortSelect" style="position:absolute;left:-9999px">Ordenar</label>
+        <select id="sortSelect" class="select-dark" aria-label="Ordenar Pokémon">
+          <option value="id-asc">ID ↑</option>
+          <option value="id-desc">ID ↓</option>
+          <option value="name-asc">Nombre A-Z</option>
+          <option value="name-desc">Nombre Z-A</option>
+          <option value="cp-desc">Poder total ↓</option>
+        </select>
+        <span class="counter" id="counter" aria-live="polite">Cargando…</span>
+      </div>
+    </div>
+
+    <div class="filters-row" style="justify-content:space-between">
+      <span class="search-hint">Filtrado en vivo por <b>nombre</b>, <b>número</b> y <b>tipo</b> · Combina búsqueda + tipo + generación. Pulsa <kbd>/</kbd> para filtrar · <kbd>ESC</kbd> limpia</span>
+      <label style="display:inline-flex;align-items:center;gap:.4rem;font-weight:700;font-size:.78rem;cursor:pointer">
+        <input type="checkbox" id="infiniteToggle" checked> Infinite scroll
+      </label>
+    </div>
+  </section>
+
+  <!-- Main -->
+  <main class="wrap">
+    <div id="statusContainer" class="status" role="status" aria-live="polite"></div>
+
+    <div id="loaderContainer" class="loader" aria-hidden="true">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <p id="loaderText">Conectando a PokeAPI…</p>
+    </div>
+
+    <div id="pokedexGrid" class="grid" aria-live="polite" aria-busy="true"></div>
+
+    <!-- Infinite sentinel -->
+    <div id="sentinel" class="sentinel" aria-hidden="true"></div>
+
+    <button id="loadMore" class="load-more" type="button">Cargar más +24</button>
+
+    <!-- Favoritos - Sección dedicada -->
+    <section id="favSection" class="fav-section" aria-label="Tus Pokémon favoritos">
+      <div class="fav-header">
+        <div>
+          <h2>♥ Tus Favoritos</h2>
+          <p id="favSubtitle">Guarda Pokémon con el corazón de cada tarjeta. Se conservan aunque cambies de generación.</p>
+        </div>
+        <div class="fav-actions">
+          <span id="favTotalBadge" class="counter"><b>0</b> guardados</span>
+          <button id="clearFavsBtn" class="btn-secondary" type="button">Vaciar favoritos</button>
+          <button id="exportFavsBtn" class="btn-primary" type="button" style="min-width:auto;padding:.5rem .9rem">Exportar .txt</button>
+        </div>
+      </div>
+      <div id="favGrid" class="grid" aria-live="polite"></div>
+      <div id="favEmpty" class="empty" style="margin-top:.9rem">
+        <h3>Aún no tienes favoritos ✨</h3>
+        <p>Pulsa <b>♥</b> en cualquier tarjeta para guardarlos aquí. Prueba filtrar por tipo y guardar tu equipo ideal.</p>
+        <button class="btn-secondary" style="margin-top:.7rem" onclick="document.getElementById('tabExplorar').click()">Ir a explorar</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Compare Bar -->
+  <aside id="compareBar" class="compare-bar" aria-label="Comparador">
+    <div class="compare-slots">
+      <div id="slot0" class="compare-slot empty"><span>1</span></div>
+      <div id="slot1" class="compare-slot empty"><span>2</span></div>
+    </div>
+    <div class="compare-hint">Selecciona 2 Pokémon con <b>⚖️</b> para comparar</div>
+    <div class="compare-actions">
+      <button id="doCompare" class="btn-compare" disabled>Comparar</button>
+      <button id="clearCompare" class="btn-ghost-compare">Limpiar</button>
+    </div>
+  </aside>
+
+  <!-- Modal Detalle -->
+  <div id="modalBackdrop" class="backdrop" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Detalle Pokémon">
+    <div id="pokemonModal" class="modal" role="document"></div>
+  </div>
+
+  <!-- Modal Comparador -->
+  <div id="compareBackdrop" class="backdrop" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Comparador Pokémon">
+    <div id="compareModal" class="modal" role="document" style="width:min(920px,96vw)"></div>
+  </div>
+
+  <footer class="footer">
+    Datos en vivo de <a href="https://pokeapi.co/docs/v2" target="_blank" rel="noopener">PokeAPI.co</a> · 
+    <a href="https://pokeapi.co/api/v2/pokemon/25" target="_blank" rel="noopener">ej: /pokemon/25</a> · 
+    Hecho con GSAP + Anime.js · <a href="https://uiverse.io" target="_blank" rel="noopener">Uiverse neon</a> · Tema se guarda en tu navegador
+  </footer>
+
+  <script src="js/pokedex.js" defer></script>
+  <noscript><p class="status" style="display:block">Activa JavaScript para usar la Pokédex con PokeAPI.</p></noscript>
+</body>
+</html>
